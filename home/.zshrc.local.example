@@ -1,0 +1,18 @@
+# ~/.zshrc.local — machine-local settings. NOT tracked in git.
+#
+# install.sh copies this template to ~/.zshrc.local only if that file does
+# not already exist. ~/.zshrc sources it near the bottom, after the prompt
+# is set up and before syntax-highlighting (which must stay last).
+#
+# Put anything personal or machine-specific here: private hostnames,
+# account names, credentials, and absolute paths containing a username.
+# ~/.zshrc itself stays portable and shareable.
+
+# ── examples ───────────────────────────────────────────────────────
+# export SOME_API_URL="https://internal.example.com"
+#
+# Pull secrets from the macOS Keychain rather than hardcoding them:
+# export SOME_TOKEN="$(security find-generic-password -a myaccount -s some-service -w 2>/dev/null)"
+#
+# Toolchains installed outside Homebrew:
+# [ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env"
