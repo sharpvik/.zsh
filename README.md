@@ -28,8 +28,19 @@ instance). A run where nothing has changed makes no changes at all.
    `~/.dotfiles-backup/<timestamp>/`.
 5. Seeds `~/.zshrc.local` from the template, if you don't already have one.
 6. If `github.com:22` is blocked, routes GitHub SSH over port 443.
-7. Installs Neovim's plugins headlessly, at the commits pinned in
+7. Installs Neovim's plugins headlessly, pinned to the commits in
    `lazy-lock.json`.
+
+### Updating
+
+```sh
+./install.sh --update   # upgrade brew packages + plugins to latest
+./sync.sh               # capture the new lazy-lock.json
+git commit -am "chore: update plugins"
+```
+
+Without `--update`, installs are reproducible: you get exactly the versions
+recorded in `lazy-lock.json`, not whatever is newest today.
 
 ## Layout
 
@@ -56,8 +67,9 @@ git commit -am "tweak: ..."
 
 `sync.sh` never commits or pushes — that stays deliberate.
 
-Same workflow for pinning plugin updates: `:Lazy update` in Neovim, then
-`./sync.sh` and review `config/nvim/lazy-lock.json`.
+Same workflow for pinning plugin updates: `./install.sh --update` (or
+`:Lazy update` in Neovim), then `./sync.sh` and review
+`config/nvim/lazy-lock.json`.
 
 ## Machine-local settings
 
@@ -79,5 +91,10 @@ this repo.
   needed for the icons in Neovim's statusline and file tree.
 - Neovim's LSP servers install lazily via Mason, the first time you open a file
   of each language — so that first open needs network.
+- `install.sh` uses `Lazy! restore`, never `Lazy! sync`. `sync` implies *update*:
+  it ignores the lockfile, moves every plugin to latest and rewrites the lockfile
+  — which is the opposite of a reproducible install. Both run in a convergence
+  loop, because lazy resolves the plugin spec from whichever LazyVim happens to
+  be checked out at startup, so a single pass can pin the wrong set of plugins.
 - `.zshrc` resolves the Homebrew prefix itself and guards every `source`, so it
   degrades gracefully on Intel Macs or a machine missing a plugin.

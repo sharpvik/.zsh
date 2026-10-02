@@ -14,6 +14,29 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
 BACKED_UP=0
+UPDATE=0
+
+usage() {
+  cat <<'USAGE'
+usage: ./install.sh [--update]
+
+  (no flags)  Install everything and pin Neovim plugins to the commits in
+              lazy-lock.json. Reproducible: you get the versions this repo
+              was last known to work with.
+
+  --update    Also upgrade Homebrew packages and Neovim plugins to the
+              latest versions, then rewrite lazy-lock.json to match. Run
+              ./sync.sh afterwards and commit to make the new pins stick.
+USAGE
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --update) UPDATE=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) usage >&2; echo >&2; echo "unknown option: $1" >&2; exit 2 ;;
+  esac
+done
 
 step() { printf '\n==> %s\n' "$1"; }
 info() { printf '    %s\n' "$1"; }
@@ -66,6 +89,12 @@ if [ -d /Applications/Ghostty.app ] && ! brew list --cask ghostty >/dev/null 2>&
 fi
 
 brew bundle --file="$REPO_DIR/Brewfile"
+
+if [ "$UPDATE" -eq 1 ]; then
+  info "Upgrading Homebrew packages (--update)..."
+  brew update
+  brew upgrade
+fi
 
 # ── 4. configs ─────────────────────────────────────────────────────
 step "Configs"
@@ -158,6 +187,22 @@ step "Neovim plugins"
 REPO_LOCK="$REPO_DIR/config/nvim/lazy-lock.json"
 LIVE_LOCK="$HOME/.config/nvim/lazy-lock.json"
 
+if [ "$UPDATE" -eq 1 ]; then
+  info "Updating plugins to the latest versions (--update)..."
+  prev=""
+  for pass in 1 2 3; do
+    nvim --headless "+Lazy! sync" +qa >/dev/null 2>&1 || \
+      warn "Lazy sync reported a problem on pass $pass."
+    cur="$(shasum "$LIVE_LOCK" | awk '{print $1}')"
+    [ "$cur" = "$prev" ] && break
+    prev="$cur"
+  done
+  info "plugins updated (converged after pass $pass)"
+  info "run ./sync.sh and commit to pin these versions in the repo"
+  exit_after_update=1
+fi
+
+if [ "${exit_after_update:-0}" -eq 0 ]; then
 info "Restoring plugins to the commits pinned in lazy-lock.json (may take a minute)..."
 converged=0
 for pass in 1 2 3; do
@@ -175,6 +220,7 @@ if [ "$converged" -eq 0 ]; then
   cp "$REPO_LOCK" "$LIVE_LOCK"
   warn "plugin versions did not converge to the lockfile after 3 passes."
   warn "Open nvim and run :Lazy restore manually to inspect."
+fi
 fi
 
 # ── 8. summary ─────────────────────────────────────────────────────
